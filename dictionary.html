@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dictionary App</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f7fee7; /* Light green-yellow background */
+            margin: 0;
+            padding: 1.5rem;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 3rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.1), 0 10px 20px -5px rgba(0, 0, 0, 0.05);
+            max-width: 650px;
+            width: 100%;
+            text-align: center;
+            border: 1px solid #dcfce7;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #a7d9f7;
+            border-radius: 0.75rem;
+            font-size: 1.125rem;
+            outline: none;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 1.5rem;
+            box-sizing: border-box;
+        }
+        input[type="text"]:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        button {
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        #resultDisplay {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            min-height: 150px; /* Provide minimum height for content */
+            text-align: left;
+            background-color: #f0fdf4; /* Very light green for results */
+            border: 1px solid #dcfce7;
+            color: #334155; /* slate-700 */
+            line-height: 1.6;
+        }
+        #resultDisplay h3 {
+            font-size: 1.5rem; /* text-2xl */
+            font-weight: 700;
+            color: #1a202c; /* gray-900 */
+            margin-bottom: 0.75rem;
+        }
+        #resultDisplay p {
+            margin-bottom: 0.5rem;
+        }
+        #resultDisplay .part-of-speech {
+            font-style: italic;
+            color: #4f46e5; /* indigo-600 */
+            font-weight: 600;
+            margin-top: 1rem;
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+        #resultDisplay .definition-list {
+            list-style-type: decimal; /* Numbered list for definitions */
+            margin-left: 1.5rem;
+            padding-left: 0.5rem;
+        }
+        #resultDisplay .definition-list li {
+            margin-bottom: 0.5rem;
+        }
+        #resultDisplay .example {
+            font-style: italic;
+            color: #64748b; /* slate-500 */
+            margin-top: 0.25rem;
+            font-size: 0.9rem;
+        }
+        .error-message {
+            color: #dc2626; /* red-600 */
+            font-weight: 600;
+            margin-top: 1rem;
+        }
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-top: 4px solid #3b82f6; /* Blue spinner */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 1rem auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Dictionary App</h1>
+
+        <input type="text" id="wordInput" placeholder="Enter a word (e.g., 'hello', 'javascript')...">
+
+        <button id="searchBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-300">
+            Get Meaning
+        </button>
+
+        <div id="resultDisplay">
+            Enter a word above and click 'Get Meaning' to see its definition.
+        </div>
+    </div>
+
+    <script>
+        // Get references to HTML elements
+        const wordInput = document.getElementById('wordInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const resultDisplay = document.getElementById('resultDisplay');
+
+        // Base URL for the Free Dictionary API
+        const API_BASE_URL = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
+
+        // Function to fetch and display word meaning
+        async function getWordMeaning() {
+            const word = wordInput.value.trim(); // Get word and remove leading/trailing spaces
+            resultDisplay.innerHTML = ''; // Clear previous results
+
+            if (word === '') {
+                resultDisplay.innerHTML = '<p class="error-message">Please enter a word.</p>';
+                return;
+            }
+
+            // Show loading spinner
+            resultDisplay.innerHTML = '<div class="loading-spinner"></div><p class="text-gray-500 mt-2">Loading definition...</p>';
+            searchBtn.disabled = true; // Disable button during fetch
+
+            try {
+                const response = await fetch(`${API_BASE_URL}${word}`);
+                const data = await response.json();
+
+                searchBtn.disabled = false; // Re-enable button
+
+                if (response.ok && data.length > 0) {
+                    // Word found
+                    const entry = data[0]; // Take the first entry
+
+                    let htmlContent = `<h3 class="text-blue-700">${entry.word}</h3>`;
+
+                    // Phonetics
+                    if (entry.phonetics && entry.phonetics.length > 0) {
+                        const audioPhonetic = entry.phonetics.find(p => p.audio);
+                        if (audioPhonetic && audioPhonetic.text) {
+                            htmlContent += `<p class="text-gray-600">${audioPhonetic.text}</p>`;
+                        }
+                        if (audioPhonetic && audioPhonetic.audio) {
+                            htmlContent += `<audio controls class="mt-2 block mx-auto">
+                                <source src="${audioPhonetic.audio}" type="audio/mpeg">
+                                Your browser does not support the audio element.
+                            </audio>`;
+                        }
+                    }
+
+                    // Meanings
+                    entry.meanings.forEach(meaning => {
+                        htmlContent += `<span class="part-of-speech">${meaning.partOfSpeech}</span>`;
+                        htmlContent += '<ol class="definition-list">';
+                        meaning.definitions.forEach((def, index) => {
+                            htmlContent += `<li>${def.definition}`;
+                            if (def.example) {
+                                htmlContent += `<p class="example">"${def.example}"</p>`;
+                            }
+                            htmlContent += `</li>`;
+                        });
+                        htmlContent += '</ol>';
+                    });
+
+                    resultDisplay.innerHTML = htmlContent;
+
+                } else {
+                    // Word not found or other API error
+                    resultDisplay.innerHTML = `
+                        <p class="error-message">
+                            Sorry, we couldn't find the meaning for "${word}".
+                            ${data.message || 'Please check the spelling or try another word.'}
+                        </p>
+                    `;
+                }
+
+            } catch (error) {
+                searchBtn.disabled = false; // Re-enable button
+                console.error('Error fetching data:', error);
+                resultDisplay.innerHTML = `
+                    <p class="error-message">
+                        An error occurred while fetching the definition. Please try again later.
+                        (Check your internet connection or the word spelling.)
+                    </p>
+                `;
+            }
+        }
+
+        // Add event listener to the search button
+        searchBtn.addEventListener('click', getWordMeaning);
+
+        // Allow searching by pressing Enter key in the input field
+        wordInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                getWordMeaning();
+            }
+        });
+    </script>
+</body>
+</html>
